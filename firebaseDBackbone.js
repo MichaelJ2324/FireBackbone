@@ -34,7 +34,7 @@
     var previousFirebaseDBackbone = root.FirebaseDBackbone;
 
     //VERSION
-    FirebaseDBackbone.VERSION = '0.1';
+    FirebaseDBackbone.VERSION = '0.2.5';
 
     // Runs FirebaseDBackbone.js in *noConflict* mode, returning the `FirebaseDBackbone` variable
     // to its previous owner. Returns a reference to this Backbone object.
