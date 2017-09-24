@@ -1,6 +1,6 @@
 {
   "name": "firebasedbackbone",
-  "version": "0.2.5",
+  "version": "0.2.7",
   "author": "Michael Russell",
   "license": "MIT",
   "dependencies": {
