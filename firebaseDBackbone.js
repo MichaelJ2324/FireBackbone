@@ -54,7 +54,7 @@
         }else{
             this._firebase = app;
         }
-        return this;
+        return this._firebase;
     };
 
     /**
@@ -91,7 +91,7 @@
         var proto = Object.getPrototypeOf(model);
         var defaultDB = null;
         if (!_.isUndefined(FirebaseDBackbone._firebase) && _.isFunction(FirebaseDBackbone._firebase.database())){
-            defaultDB = FirebaseDBackbone._firebase.database();
+            defaultDB = FirebaseDBackbone.firebaseApp().database();
         }
         return _.extend(
             {
@@ -197,31 +197,28 @@
 
         // Determine whether the realtime or once methods apply
         initialize: function (model, options) {
+            this.autoSync(_determineAutoSync(this, options));
+
+            this.database = _determineDatabase(this, options);
+
             var defaults = _.result(this, 'defaults');
 
             // Apply defaults only after first sync.
             this.once('sync', function () {
                 this.set(_.defaults(this.toJSON(), defaults));
             });
-
-            this.autoSync(_determineAutoSync(this, options));
-
-            this.database = _determineDatabase(this, options);
-
-            if (this.autoSync()){
-                this._listenLocalChanges();
-            }
         },
 
         autoSync: function(autoSync){
             if (!_.isUndefined(autoSync)){
-                if (autoSync === false){
-                    if (this._autoSync === true){
+                if (autoSync !== this._autoSync){
+                    if (autoSync === false){
                         this._closeRef();
+                        this.off('change',this._autoSyncListeners.change);
+                        this.off('destroy',this._autoSyncListeners.destroy);
+                    }else{
+                        this._listenLocalChanges();
                     }
-                } else {
-
-                    _determineAutoSync(this, options);
                 }
                 this._autoSync = autoSync;
             }
@@ -247,7 +244,7 @@
                     this._ref = this._buildRef(url);
                     break;
                 default:
-                    Backbonefire._throwError('Invalid type returned from url method');
+                    _throwError('Invalid type returned from url method');
             }
             return this._ref;
         },
@@ -275,18 +272,25 @@
             }
         },
 
-        _listenLocalChanges: function(){
-            if (this.autoSync()){
-                this.on('change',function(model,options){
+        _autoSyncListeners: {
+            change: _.bind(function(model,options){
+                if (model.autoSync()){
                     if (model.hasChanged(model.idAttribute)){
                         model.ref(true);
                     }
                     model.save();
-                });
-                this.on('destroy',function(model,options){
+                }
+            },this),
+            destroy: _.bind(function(model,options){
+                if (model.autoSync()) {
                     model.ref(true);
-                });
-            }
+                }
+            },this)
+        },
+
+        _listenLocalChanges: function(){
+            this.on('change',this._autoSyncListeners.change);
+            this.on('destroy',this._autoSyncListeners.destroy);
         },
 
         sync: function (method, model, options) {
@@ -338,20 +342,20 @@
          * Find the deleted keys and set their values to null
          * so Firebase properly deletes them.
          */
-        // _updateModel: function (model) {
-        //     var modelObj = model.changedAttributes();
-        //     _.each(model.changed, function (value, key) {
-        //         //Don't submit IDs in Model as it exists in reference
-        //         if (key == model.idAttribute) {
-        //             delete modelObj[key];
-        //         }
-        //         if (typeof value === 'undefined' || value === null) {
-        //             modelObj[key] = null;
-        //         }
-        //     });
-        //
-        //     return modelObj;
-        // }
+        _updateModel: function (model) {
+            var modelObj = model.changedAttributes();
+            _.each(model.changed, function (value, key) {
+                //Don't submit IDs in Model as it exists in reference
+                if (key == model.idAttribute) {
+                    delete modelObj[key];
+                }
+                if (typeof value === 'undefined' || value === null) {
+                    modelObj[key] = null;
+                }
+            });
+
+            return modelObj;
+        }
 
     });
 
