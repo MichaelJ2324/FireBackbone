@@ -90,8 +90,9 @@
     var _determineDatabase = function (model, options) {
         var proto = Object.getPrototypeOf(model);
         var defaultDB = null;
-        if (!_.isUndefined(FirebaseDBackbone._firebase) && _.isFunction(FirebaseDBackbone._firebase.database())){
-            defaultDB = FirebaseDBackbone.firebaseApp().database();
+        var app = FirebaseDBackbone.firebaseApp();
+        if (!_.isUndefined(app) && !_.isNull(app)){
+            defaultDB = app.database();
         }
         return _.extend(
             {
